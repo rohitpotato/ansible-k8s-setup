@@ -5,17 +5,19 @@
     mode: 700
 
 - name: Install Helm
-  ansible.builtin.script: /tmp/get_helm.sh
+  ansible.builtin.shell: /tmp/get_helm.sh
 
 - name: Install K3s without CNI (No Flannel)
-  ansible.builtin.script: curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='--flannel-backend=none --disable-network-policy' sh -
+  ansible.builtin.shell: curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC='--flannel-backend=none --disable-network-policy' sh -
 
 - name: Install Cilium CNI CLI
   ansible.builtin.copy:
     src: ../../../files/install-cilium.sh
     dest: /tmp/install-cilium.sh
     mode: 700
-  ansible.builtin.script: /tmp/install-cilium.sh
+  ansible.builtin.shell: /tmp/install-cilium.sh
+  retries: 3
+  delay: 10
 
 - name: Install Cilium CNI
-  ansible.builtin.script: cilium install --version 1.17.5 --set=ipam.operator.clusterPoolIPv4PodCIDRList="10.42.0.0/16"
+  ansible.builtin.shell: cilium install --version 1.17.5 --set=ipam.operator.clusterPoolIPv4PodCIDRList="10.42.0.0/16"

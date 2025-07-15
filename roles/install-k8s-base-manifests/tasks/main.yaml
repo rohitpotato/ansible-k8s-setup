@@ -5,7 +5,7 @@
     dest: /home/rohit/k8s-apps
 
 - name: Install cert-manager
-  ansible.builtin.script: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
+  ansible.builtin.shell: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
 
 - name: Apply cert-manager manifest
   kubernetes.core.k8s:
