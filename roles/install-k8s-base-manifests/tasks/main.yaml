@@ -1,0 +1,64 @@
+---
+- name: Clone k8s-repo
+  ansible.builtin.git:
+    repo: git@github.com:rohitpotato/k8s-apps.git
+    dest: /home/rohit/k8s-apps
+
+- name: Install cert-manager
+  ansible.builtin.script: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
+
+- name: Apply cert-manager manifest
+  kubernetes.core.k8s:
+    state: present
+    src: /home/rohit/k8s-apps/enable-https.yaml
+
+- name: Apply traefik middleware
+  kubernetes.core.k8s:
+    state: present
+    src: /home/rohit/k8s-apps/traefik-https-redirect-middleware.yaml
+
+- name: Create argocd namespace
+  kubernetes.core.k8s:
+    name: argocd
+    api_version: v1
+    kind: Namespace
+    state: present
+
+- name: Install argocd
+  kubernetes.core.k8s:
+    state: present
+    src: https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+    namespace: argocd
+
+- name: Apply argocd manifests
+  kubernetes.core.k8s:
+    state: present
+    src: /home/rohit/k8s-apps/argocd/app-project.yaml
+
+- name: Apply argocd configmap
+  kubernetes.core.k8s:
+    state: present
+    src: /home/rohit/k8s-apps/argocd/app-config.yaml
+    namespace: argocd
+
+- name: Apply argocd secret
+  kubernetes.core.k8s:
+    state: present
+    src: /home/rohit/k8s-apps/argocd/app-rbac-config.yaml
+    namespace: argocd
+
+- name: Apply argocd ingress
+  kubernetes.core.k8s:
+    state: present
+    src: /home/rohit/k8s-apps/argocd/ingress.yaml
+    namespace: argocd
+
+- name: Apply scan-apps to apply all applications
+  kubernetes.core.k8s:
+    state: present
+    src: /home/rohit/k8s-apps/scan-apps.yaml
+
+- name: Apply scan-apps to apply all applications
+  kubernetes.core.k8s:
+    state: present
+    src: /home/rohit/k8s-apps/base/scan-apps.yaml

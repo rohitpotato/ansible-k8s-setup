@@ -1,0 +1,7 @@
+- name: Kubernetes Setup
+  hosts: vps
+  become: yes
+
+  roles:
+    - install-dependencies
+    - install-k8s-base-manifests
