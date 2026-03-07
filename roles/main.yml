@@ -1,6 +1,9 @@
 - name: Kubernetes Setup
   hosts: vps
   become: yes
+  module_defaults:
+    kubernetes.core.k8s:
+      kubeconfig: /home/rohit/.kube/config
 
   roles:
     - install-dependencies

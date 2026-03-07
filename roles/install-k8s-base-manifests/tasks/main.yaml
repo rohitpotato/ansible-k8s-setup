@@ -1,21 +1,48 @@
 ---
+- name: Install python deps for kubernetes.core.k8s
+  become: true
+  ansible.builtin.apt:
+    update_cache: true
+    name:
+      - python3-pip
+      - python3-kubernetes
+    state: present
+
+
 - name: Clone k8s-repo
   ansible.builtin.git:
-    repo: git@github.com:rohitpotato/k8s-apps.git
+    repo: https://github.com/rohitpotato/k8s-apps.git
     dest: /home/rohit/k8s-apps
+
+# Minimal but critical: ensure rohit has a kubeconfig with embedded certs
+- name: Ensure rohit kubeconfig exists (embedded certs)
+  become: true
+  ansible.builtin.shell: |
+    set -euo pipefail
+    mkdir -p /home/rohit/.kube
+    k3s kubectl config view --raw --flatten > /home/rohit/.kube/config
+    chown rohit:rohit /home/rohit/.kube/config
+    chmod 600 /home/rohit/.kube/config
+  args:
+    executable: /bin/bash
 
 - name: Install cert-manager
   ansible.builtin.shell: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
+  environment:
+    KUBECONFIG: /home/rohit/.kube/config
 
 - name: Apply cert-manager manifest
   kubernetes.core.k8s:
     state: present
-    src: /home/rohit/k8s-apps/enable-https.yaml
+    src: /home/rohit/k8s-apps/cluster/enable-https.yaml
+
 
 - name: Apply traefik middleware
   kubernetes.core.k8s:
     state: present
-    src: /home/rohit/k8s-apps/traefik-https-redirect-middleware.yaml
+    namespace: default
+    src: /home/rohit/k8s-apps/cluster/traefik-https-redirect-middleware.yaml
+
 
 - name: Create argocd namespace
   kubernetes.core.k8s:
@@ -23,42 +50,52 @@
     api_version: v1
     kind: Namespace
     state: present
+  environment:
+    KUBECONFIG: /home/rohit/.kube/config
 
-- name: Install argocd
-  kubernetes.core.k8s:
-    state: present
-    src: https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-    namespace: argocd
+# Minimal fix for the CRD annotation size issue: use server-side apply for Argo CD install
+- name: Install argocd (server-side apply to avoid CRD annotation size limit)
+  ansible.builtin.shell: >
+    kubectl apply --server-side --force-conflicts
+    -n argocd
+    -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+  environment:
+    KUBECONFIG: /home/rohit/.kube/config
 
 - name: Apply argocd manifests
   kubernetes.core.k8s:
     state: present
     src: /home/rohit/k8s-apps/argocd/app-project.yaml
+  environment:
+    KUBECONFIG: /home/rohit/.kube/config
 
 - name: Apply argocd configmap
   kubernetes.core.k8s:
     state: present
     src: /home/rohit/k8s-apps/argocd/app-config.yaml
     namespace: argocd
+  environment:
+    KUBECONFIG: /home/rohit/.kube/config
 
 - name: Apply argocd secret
   kubernetes.core.k8s:
     state: present
     src: /home/rohit/k8s-apps/argocd/app-rbac-config.yaml
     namespace: argocd
+  environment:
+    KUBECONFIG: /home/rohit/.kube/config
 
 - name: Apply argocd ingress
   kubernetes.core.k8s:
     state: present
     src: /home/rohit/k8s-apps/argocd/ingress.yaml
     namespace: argocd
-
-- name: Apply scan-apps to apply all applications
-  kubernetes.core.k8s:
-    state: present
-    src: /home/rohit/k8s-apps/scan-apps.yaml
+  environment:
+    KUBECONFIG: /home/rohit/.kube/config
 
 - name: Apply scan-apps to apply all applications
   kubernetes.core.k8s:
     state: present
     src: /home/rohit/k8s-apps/base/scan-apps.yaml
+  environment:
+    KUBECONFIG: /home/rohit/.kube/config
