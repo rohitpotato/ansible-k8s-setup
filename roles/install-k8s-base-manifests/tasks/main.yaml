@@ -93,6 +93,21 @@
   environment:
     KUBECONFIG: /home/rohit/.kube/config
 
+- name: Create argo rollouts namespace
+  kubernetes.core.k8s:
+    name: argo-rollouts
+    api_version: v1
+    kind: Namespace
+    state: present
+  environment:
+    KUBECONFIG: /home/rohit/.kube/config
+
+- name: Install argo rollouts
+  ansible.builtin.shell: kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
+  environment:
+    KUBECONFIG: /home/rohit/.kube/config
+
+
 - name: Apply scan-apps to apply all applications
   kubernetes.core.k8s:
     state: present
